@@ -74,7 +74,7 @@ if __name__=="__main__":
 
     page_size = resource.getpagesize()
     template = "index.html.tmpl"
-    filename = "large_file.inc"
+    include = "large_file.inc"
     genname = "output.html"
     calls = 0
     max_calls = 1000
@@ -83,8 +83,8 @@ if __name__=="__main__":
     while calls < max_calls:
         calls += 1
         # comment out the call to touch_file for a 'static' file test
-        touch_file(filename)
-        genit(filename,genname)
+        touch_file(include)
+        genit(template,genname)
         record = get_data(page_size, calls)
         print(record)
 
