@@ -1,25 +1,10 @@
-# v0.0.1
+# v0.0.2
 import os
 import resource
 import time
 
 import Cheetah.Template
 
-#import weewx
-#import weewx.cheetahgenerator
-
-#searchList = [
-#    "weewx.cheetahgenerator.Almanac",
-#    "weewx.cheetahgenerator.Station",
-#    "weewx.cheetahgenerator.Current",
-#    "weewx.cheetahgenerator.Stats",
-#    "weewx.cheetahgenerator.UnitInfo",
-#    "weewx.cheetahgenerator.Extras"
-#]
-
-# cd /home/weewx
-# PYTHONPATH=bin python bin/user/testcheetah.py
-#
 if __name__=="__main__":
     def genit(filename, genname):
         tmpname = genname + '.tmp'
@@ -27,23 +12,10 @@ if __name__=="__main__":
         #print("  compiling")
         compiled_template = Cheetah.Template.Template(
             file=filename,
-            #searchList=searchList,
-            ##filter='AssureUnicode',
-            ##filtersLib=weewx.cheetahgenerator
         )
 
         #print("  respond")
         unicode_string = compiled_template.respond()
-
-        #print("  encode")
-        #byte_string = unicode_string.encode('ascii', 'xmlcharrefreplace')
-
-        #print("  write")
-        #with open(tmpname, mode='wb') as fd:
-        #    fd.write(byte_string)
-
-        #print("  rename")
-        #os.rename(tmpname, genname)
 
     def touch_file(filename):
         os.system("touch %s" % filename)
@@ -77,7 +49,7 @@ if __name__=="__main__":
     include = "large_file.inc"
     genname = "output.html"
     calls = 0
-    max_calls = 1000
+    max_calls = 100
     record = get_data(page_size, calls)
     print(record)
     while calls < max_calls:
