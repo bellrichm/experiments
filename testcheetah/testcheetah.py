@@ -1,4 +1,4 @@
-# v0.0.2
+# v0.0.3
 import os
 import resource
 import time
@@ -15,7 +15,8 @@ if __name__=="__main__":
         )
 
         #print("  respond")
-        unicode_string = compiled_template.respond()
+        # only needed when including large file
+        #unicode_string = compiled_template.respond()
 
     def touch_file(filename):
         os.system("touch %s" % filename)
@@ -47,6 +48,7 @@ if __name__=="__main__":
     page_size = resource.getpagesize()
     template = "index.html.tmpl"
     include = "large_file.inc"
+    template = include # do not bother with include - compile large file directly
     genname = "output.html"
     calls = 0
     max_calls = 100
