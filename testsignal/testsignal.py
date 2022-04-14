@@ -2,6 +2,7 @@ from concurrent.futures import thread
 import errno
 import os
 import subprocess
+import time
 import threading
 
 import weewx
@@ -54,7 +55,8 @@ except ImportError:
         """ Log error level. """
         logmsg(syslog.LOG_ERR, msg)
 
-def invoke_sleepy(seconds, sigterm):
+shutting_down = False
+def invoke_sleepy2(seconds, sigterm):
     print("sleeping")
     log.info("sleeping")
 
@@ -75,6 +77,38 @@ def invoke_sleepy(seconds, sigterm):
 
     print(stroutput)  
     log.info(stroutput)
+
+def invoke_sleepy(seconds, sigterm):
+    print("sleeping")
+    log.info("sleeping")
+
+    python_file = os.path.join(os.path.dirname(__file__), 'sleepy.py')
+    cmd = ["/usr/bin/python3"]
+    cmd.extend([python_file])
+    cmd.extend(["--seconds=%s" % seconds])
+    cmd.extend(["--sigterm=%s" % sigterm])
+    try:
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        while process.poll() is None and not shutting_down:
+            time.sleep(10)
+
+        if shutting_down and process.poll() is None:
+            log.info("attempting TERM")
+            process.terminate()
+        if shutting_down and process.poll() is None:
+            log.info("attempting KILL")
+            process.kill()
+
+        if process.poll() is None:
+            log.info("still running")
+
+        stdout = process.communicate()[0]
+        stroutput = stdout.decode("utf-8").strip()
+    except Exception as e:
+        logerr(e)
+        raise      
+
+    log.info('awake')
 
 class TestSignalService(StdService):
     """A service to test handling signals. """
@@ -101,11 +135,13 @@ class TestSignalService(StdService):
 
     def shutDown(self):
         """Run when an engine shutdown is requested."""
+        global shutting_down
         loginf("SHUTDOWN - initiated")
 
         if self._thread:
             loginf("SHUTDOWN - thread initiated")
             self._thread.running = False
+            shutting_down = True
             self._thread.threading_event.set()
             self._thread.join(20.0)
             if self._thread.is_alive():
