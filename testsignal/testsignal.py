@@ -8,7 +8,7 @@ import weewx
 
 from weewx.engine import StdService
 from weewx.reportengine import ReportGenerator
-from weeutil.weeutil import to_bool
+from weeutil.weeutil import to_bool, to_int
 
 try:
     # Test for new-style weewx logging by trying to import weeutil.logger
@@ -54,13 +54,15 @@ except ImportError:
         """ Log error level. """
         logmsg(syslog.LOG_ERR, msg)
 
-def invoke_sleepy():
+def invoke_sleepy(seconds, sigterm):
     print("sleeping")
     log.info("sleeping")
 
     python_file = os.path.join(os.path.dirname(__file__), 'sleepy.py')
     cmd = ["/usr/bin/python3"]
     cmd.extend([python_file])
+    cmd.extend(["--seconds=%s" % seconds])
+    cmd.extend(["--sigterm=%s" % sigterm])
 
     try:
         sleepy_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -86,8 +88,11 @@ class TestSignalService(StdService):
             loginf("Not enabled, exiting.")
             return            
 
+        seconds = to_int(service_dict.get('seconds', 10))    
+        sigterm = service_dict.get('sigterm', 'handle')  
+
         self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
-        self._thread = TestSignalServiceThread()
+        self._thread = TestSignalServiceThread(seconds, sigterm)
         self._thread.start()
 
     def new_archive_record(self, event):
@@ -110,9 +115,11 @@ class TestSignalService(StdService):
 
 class TestSignalServiceThread(threading.Thread):
     """A service to test handling signals."""
-    def __init__(self):
+    def __init__(self, seconds, sigterm):
         threading.Thread.__init__(self)
 
+        self.seconds = seconds
+        self.sigterm = sigterm
         self.running = False
 
         self.threading_event = threading.Event()
@@ -122,7 +129,7 @@ class TestSignalServiceThread(threading.Thread):
 
         while self.running:
             self.threading_event.wait()
-            invoke_sleepy()
+            invoke_sleepy(self.seconds, self.sigterm)
             self.threading_event.clear()
 
         loginf("exited loop")
@@ -136,9 +143,13 @@ class TestSignalGenerator(ReportGenerator):
         weewx.reportengine.ReportGenerator.__init__(
             self, config_dict, skin_dict, *args, **kwargs)
 
+        extras = skin_dict.get('Extras', {})
+        self.seconds = to_int(extras.get('seconds', 10))    
+        self.sigterm = extras.get('sigterm', 'handle')
+
     def run(self):
         print("running")
-        invoke_sleepy()
+        invoke_sleepy(self.seconds, self.sigterm)
 
     def finalize(self):
         print("finalize")

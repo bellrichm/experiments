@@ -1,4 +1,4 @@
-from logging import logMultiprocessing
+import argparse
 import signal
 import syslog
 import time
@@ -17,9 +17,27 @@ def handleSIGTERM(signum, _frame):
     log_it("Handling signal TERM (%s)." %signum) 
     running = False   
 
-#signal.signal(signal.SIGTERM, ignoreSIGTERM)
-signal.signal(signal.SIGTERM, handleSIGTERM)
+usage = """sleepy --help
+        [--seconds=SECONDS]
+        [--sigterm=SIGTERM]
+"""
 
+parser = argparse.ArgumentParser(usage=usage)
+
+parser.add_argument('--seconds', dest='seconds', type=int,
+                    help='The number of seconds to sleep.',
+                    default=10)
+parser.add_argument("--sigterm", choices=["handle", "ignore"],
+                    help="How to handle the SIGTERM signal.",
+                    default="handle")
+
+options = parser.parse_args()
+
+
+if options.sigterm == 'ignore':
+    signal.signal(signal.SIGTERM, ignoreSIGTERM)
+else:
+    signal.signal(signal.SIGTERM, handleSIGTERM)
 
 log_it("starting")
 
