@@ -139,7 +139,7 @@ class TestSignalGenerator(ReportGenerator):
 
     def __init__(self, config_dict, skin_dict, *args, **kwargs):
         """Initialize an instance of TestSignalGenerator"""
-        print("init")
+        loginf("init")
         weewx.reportengine.ReportGenerator.__init__(
             self, config_dict, skin_dict, *args, **kwargs)
 
@@ -148,11 +148,11 @@ class TestSignalGenerator(ReportGenerator):
         self.sigterm = extras.get('sigterm', 'handle')
 
     def run(self):
-        print("running")
+        loginf("running")
         invoke_sleepy(self.seconds, self.sigterm)
 
     def finalize(self):
-        print("finalize")
+        loginf("finalize")
         super().finalize()
 
 if __name__ == "__main__":
