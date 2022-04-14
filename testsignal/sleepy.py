@@ -43,5 +43,6 @@ log_it("starting")
 
 while running:
     time.sleep(10)
+    log_it("sleeping")
 
 log_it("done")
