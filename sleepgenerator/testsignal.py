@@ -1,0 +1,148 @@
+from concurrent.futures import thread
+import errno
+import os
+import subprocess
+import threading
+
+import weewx
+
+from weewx.engine import StdService
+from weewx.reportengine import ReportGenerator
+from weeutil.weeutil import to_bool
+
+try:
+    # Test for new-style weewx logging by trying to import weeutil.logger
+    import weeutil.logger
+    import logging
+    log = logging.getLogger(__name__) # confirm to standards pylint: disable=invalid-name
+    def setup_logging(logging_level, config_dict):
+        """ Setup logging for running in standalone mode."""
+        if logging_level:
+            weewx.debug = logging_level
+
+        weeutil.logger.setup('wee_TestSignal', config_dict)
+
+    def logdbg(msg):
+        """ Log debug level. """
+        log.debug(msg)
+
+    def loginf(msg):
+        """ Log informational level. """
+        log.info(msg)
+
+    def logerr(msg):
+        """ Log error level. """
+        log.error(msg)
+
+except ImportError:
+    # Old-style weewx logging
+    import syslog
+
+    def logmsg(level, msg):
+        """ Log the message at the designated level. """
+        syslog.syslog(level, 'wee_HealthChecks: %s:' % msg)
+
+    def logdbg(msg):
+        """ Log debug level. """
+        logmsg(syslog.LOG_DEBUG, msg)
+
+    def loginf(msg):
+        """ Log informational level. """
+        logmsg(syslog.LOG_INFO, msg)
+
+    def logerr(msg):
+        """ Log error level. """
+        logmsg(syslog.LOG_ERR, msg)
+
+def invoke_sleepy():
+    print("sleeping")
+    log.info("sleeping")
+
+    python_file = os.path.join(os.path.dirname(__file__), 'sleepy.py')
+    cmd = ["/usr/bin/python3"]
+    cmd.extend([python_file])
+
+    try:
+        sleepy_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        stdout = sleepy_cmd.communicate()[0]
+        stroutput = stdout.decode("utf-8").strip()
+    except Exception as e:
+        logerr(e)
+        raise      
+
+    print(stroutput)  
+    log.info(stroutput)
+
+class TestSignalService(StdService):
+    """A service to test handling signals. """
+    def __init__(self, engine, config_dict):
+        super(TestSignalService, self).__init__(engine, config_dict)    
+
+        service_dict = config_dict.get('TestSignal', {})
+
+        self.enable = to_bool(service_dict.get('enable', True))    
+        if not self.enable:
+            loginf("Not enabled, exiting.")
+            return            
+
+        self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+        self._thread = TestSignalServiceThread()
+        self._thread.start()
+
+    def new_archive_record(self, event):
+        """The new archive record event."""
+        self._thread.threading_event.set()
+
+    def shutDown(self):
+        """Run when an engine shutdown is requested."""
+        loginf("SHUTDOWN - initiated")
+
+        if self._thread:
+            loginf("SHUTDOWN - thread initiated")
+            self._thread.running = False
+            self._thread.threading_event.set()
+            self._thread.join(20.0)
+            if self._thread.is_alive():
+                logerr("Unable to shut down %s thread" %self._thread.name)
+
+            self._thread = None        
+
+class TestSignalServiceThread(threading.Thread):
+    """A service to test handling signals."""
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+        self.running = False
+
+        self.threading_event = threading.Event()
+
+    def run(self):
+        self.running = True
+
+        while self.running:
+            self.threading_event.wait()
+            invoke_sleepy()
+            self.threading_event.clear()
+
+        loginf("exited loop")
+
+class TestSignalGenerator(ReportGenerator):
+    """Class for managing signal test generator."""
+
+    def __init__(self, config_dict, skin_dict, *args, **kwargs):
+        """Initialize an instance of TestSignalGenerator"""
+        print("init")
+        weewx.reportengine.ReportGenerator.__init__(
+            self, config_dict, skin_dict, *args, **kwargs)
+
+    def run(self):
+        print("running")
+        invoke_sleepy()
+
+    def finalize(self):
+        print("finalize")
+        super().finalize()
+
+if __name__ == "__main__":
+    pass
