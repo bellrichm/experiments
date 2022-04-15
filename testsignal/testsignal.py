@@ -95,6 +95,7 @@ def invoke_sleepy(seconds, sigterm):
         if shutting_down and process.poll() is None:
             log.info("attempting TERM")
             process.terminate()
+        time.sleep(10)
         if shutting_down and process.poll() is None:
             log.info("attempting KILL")
             process.kill()
