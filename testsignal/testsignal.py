@@ -55,10 +55,11 @@ except ImportError:
 
 class Sleepy(object):
     """Manage the sleeping."""
-    def __init__(self, verbosity, seconds, sigterm, invocation_type):
+    def __init__(self, verbosity, seconds, sigterm, sigint, invocation_type):
         self.verbosity = verbosity
         self.seconds = seconds
         self.sigterm = sigterm
+        self.sigint = sigint
         self.invocation_type = invocation_type
 
     def invoke(self, controller):
@@ -76,6 +77,7 @@ class Sleepy(object):
         cmd.extend(["--verbosity=%s" % self.verbosity])
         cmd.extend(["--seconds=%s" % self.seconds])
         cmd.extend(["--sigterm=%s" % self.sigterm])
+        cmd.extend(["--sigint=%s" % self.sigint])
 
         try:
             sleepy_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -99,6 +101,7 @@ class Sleepy(object):
         cmd.extend(["--verbosity=%s" % self.verbosity])
         cmd.extend(["--seconds=%s" % self.seconds])
         cmd.extend(["--sigterm=%s" % self.sigterm])
+        cmd.extend(["--sigint=%s" % self.sigint])
         try:
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             while process.poll() is None and controller.running:
@@ -141,6 +144,7 @@ class TestSignalService(StdService):
         sleepy = Sleepy(to_int(service_dict.get('verbosity', 0)),
                         to_int(service_dict.get('seconds', 10)),
                         service_dict.get('sigterm', 'handle'),
+                        service_dict.get('sigint', 'handle'),
                         service_dict.get('type', 'blocking'))
 
         self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
@@ -198,6 +202,7 @@ class TestSignalGenerator(ReportGenerator):
         self.sleepy = Sleepy(to_int(extras.get('verbosity', 0)),
                              to_int(extras.get('seconds', 10)),
                              extras.get('sigterm', 'handle'),
+                             extras.get('sigint', 'handle'),
                              extras.get('type', 'blocking'))
 
     def run(self):

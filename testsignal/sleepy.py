@@ -6,11 +6,10 @@ import time
 
 class Sleepy(object):
     """Manage the sleeping."""
-    def __init__(self, verbosity, seconds, sigterm):
+    def __init__(self, verbosity, seconds, sigterm, sigint):
         syslog.openlog('wee_sleepy', syslog.LOG_PID | syslog.LOG_CONS)
         self.verbosity = verbosity
         self.seconds = seconds
-        self.sigterm = sigterm
 
         self.running = False
 
@@ -19,15 +18,19 @@ class Sleepy(object):
         else:
             signal.signal(signal.SIGTERM, self._handle_signal)
 
+        if sigint == 'ignore':
+            signal.signal(signal.SIGINT, self._ignore_signal)
+        else:
+            signal.signal(signal.SIGINT, self._handle_signal)
+
     def _log_it(self, msg):
-        #print(msg)
         syslog.syslog(syslog.LOG_INFO, msg)
 
     def _ignore_signal(self, signum, _frame):
-        self._log_it("Ignoring signal TERM (%s)." %signum)
+        self._log_it("Ignoring signal %s (%s)." %(signal.Signals(signum).name, signum)) #pylint bug - pylint: disable=no-member
 
     def _handle_signal(self, signum, _frame):
-        self._log_it("Handling signal TERM (%s)." %signum)
+        self._log_it("Handling signal %s (%s)." %(signal.Signals(signum).name, signum)) #pylint bug - pylint: disable=no-member
         self.running = False
 
     def sleep(self):
@@ -61,9 +64,13 @@ def main():
                         help="How to handle the SIGTERM signal.",
                         default="handle")
 
+    parser.add_argument("--sigint", choices=["handle", "ignore"],
+                        help="How to handle the SIGINT signal.",
+                        default="handle")
+
     options = parser.parse_args()
 
-    sleepy = Sleepy(options.verbosity, options.seconds, options.sigterm)
+    sleepy = Sleepy(options.verbosity, options.seconds, options.sigterm, options.sigint)
     sleepy.sleep()
 
 if __name__ == "__main__":
