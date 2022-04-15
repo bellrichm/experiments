@@ -7,6 +7,7 @@ import time
 class Sleepy(object):
     """Manage the sleeping."""
     def __init__(self, verbosity, seconds, sigterm):
+        syslog.openlog('wee_sleepy', syslog.LOG_PID | syslog.LOG_CONS)
         self.verbosity = verbosity
         self.seconds = seconds
         self.sigterm = sigterm
