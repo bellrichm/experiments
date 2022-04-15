@@ -1,53 +1,69 @@
+"""Experimenting with signals."""
 import argparse
 import signal
 import syslog
 import time
 
-running = True
-verbosity = 0
+class Sleepy(object):
+    """Manage the sleeping."""
+    def __init__(self, verbosity, seconds, sigterm):
+        self.verbosity = verbosity
+        self.seconds = seconds
+        self.sigterm = sigterm
 
-def log_it(msg):
-    #print(msg)
-    syslog.syslog(syslog.LOG_INFO, msg)
+        self.running = False
 
-def ignoreSIGTERM(signum, _frame):
-    log_it("Ignoring signal TERM (%s)." %signum)
+        if sigterm == 'ignore':
+            signal.signal(signal.SIGTERM, self._ignore_sigterm)
+        else:
+            signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-def handleSIGTERM(signum, _frame):
-    global running
-    log_it("Handling signal TERM (%s)." %signum) 
-    running = False   
+    def _log_it(self, msg):
+        #print(msg)
+        syslog.syslog(syslog.LOG_INFO, msg)
 
-usage = """sleepy --help
-        [--seconds=SECONDS]
-        [--sigterm=SIGTERM]
-"""
+    def _ignore_sigterm(self, signum, _frame):
+        self._log_it("Ignoring signal TERM (%s)." %signum)
 
-parser = argparse.ArgumentParser(usage=usage)
+    def _handle_sigterm(self, signum, _frame):
+        self._log_it("Handling signal TERM (%s)." %signum)
+        self.running = False
 
-parser.add_argument('--verbosity', dest='verbosity', type=int,
-                    help='Controls the logging verbosity.',
-                    default=0)
-parser.add_argument('--seconds', dest='seconds', type=int,
-                    help='The number of seconds to sleep.',
-                    default=10)
-parser.add_argument("--sigterm", choices=["handle", "ignore"],
-                    help="How to handle the SIGTERM signal.",
-                    default="handle")
+    def sleep(self):
+        """Simulate long running via sleep."""
+        self._log_it("starting")
 
-options = parser.parse_args()
+        self.running = True
+        while self.running:
+            time.sleep(self.seconds)
+            if self.verbosity > 0:
+                self._log_it("sleeping")
 
+        self._log_it("done")
 
-if options.sigterm == 'ignore':
-    signal.signal(signal.SIGTERM, ignoreSIGTERM)
-else:
-    signal.signal(signal.SIGTERM, handleSIGTERM)
+def main():
+    """Mainline code."""
+    usage = """sleepy --help
+            [--seconds=SECONDS]
+            [--sigterm=SIGTERM]
+    """
 
-log_it("starting")
+    parser = argparse.ArgumentParser(usage=usage)
 
-while running:
-    time.sleep(10)
-    if verbosity > 0:
-        log_it("sleeping")
+    parser.add_argument('--verbosity', dest='verbosity', type=int,
+                        help='Controls the logging verbosity.',
+                        default=0)
+    parser.add_argument('--seconds', dest='seconds', type=int,
+                        help='The number of seconds to sleep.',
+                        default=10)
+    parser.add_argument("--sigterm", choices=["handle", "ignore"],
+                        help="How to handle the SIGTERM signal.",
+                        default="handle")
 
-log_it("done")
+    options = parser.parse_args()
+
+    sleepy = Sleepy(options.verbosity, options.seconds, options.sigterm)
+    sleepy.sleep()
+
+if __name__ == "__main__":
+    main()
