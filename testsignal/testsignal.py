@@ -1,5 +1,3 @@
-from concurrent.futures import thread
-import errno
 import os
 import subprocess
 import time
@@ -55,79 +53,98 @@ except ImportError:
         """ Log error level. """
         logmsg(syslog.LOG_ERR, msg)
 
-shutting_down = False
-def invoke_sleepy2(seconds, sigterm):
-    print("sleeping")
-    log.info("sleeping")
+class Sleepy(object):
+    """Manage the sleeping."""
+    def __init__(self, verbosity, seconds, sigterm, invocation_type):
+        self.verbosity = verbosity
+        self.seconds = seconds
+        self.sigterm = sigterm
+        self.invocation_type = invocation_type
 
-    python_file = os.path.join(os.path.dirname(__file__), 'sleepy.py')
-    cmd = ["/usr/bin/python3"]
-    cmd.extend([python_file])
-    cmd.extend(["--seconds=%s" % seconds])
-    cmd.extend(["--sigterm=%s" % sigterm])
+    def invoke(self, controller):
+        if self.invocation_type == "blocking":
+            self._invoke_blocking()
+        else:
+            self._invoke_nonblocking(controller)
 
-    try:
-        sleepy_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    def _invoke_blocking(self):
+        loginf("sleeping blocking")
 
-        stdout = sleepy_cmd.communicate()[0]
-        stroutput = stdout.decode("utf-8").strip()
-    except Exception as e:
-        logerr(e)
-        raise      
+        python_file = os.path.join(os.path.dirname(__file__), 'sleepy.py')
+        cmd = ["/usr/bin/python3"]
+        cmd.extend([python_file])
+        cmd.extend(["--verbosity=%s" % self.verbosity])
+        cmd.extend(["--seconds=%s" % self.seconds])
+        cmd.extend(["--sigterm=%s" % self.sigterm])
 
-    print(stroutput)  
-    log.info(stroutput)
+        try:
+            sleepy_cmd = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-def invoke_sleepy(seconds, sigterm):
-    print("sleeping")
-    log.info("sleeping")
+            stdout = sleepy_cmd.communicate()[0]
+            stroutput = stdout.decode("utf-8").strip()
+        except Exception as exception:
+            logerr(exception)
+            raise
 
-    python_file = os.path.join(os.path.dirname(__file__), 'sleepy.py')
-    cmd = ["/usr/bin/python3"]
-    cmd.extend([python_file])
-    cmd.extend(["--seconds=%s" % seconds])
-    cmd.extend(["--sigterm=%s" % sigterm])
-    try:
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        while process.poll() is None and not shutting_down:
+        loginf(stroutput)
+
+        loginf('awake')
+
+    def _invoke_nonblocking(self, controller):
+        loginf("sleeping nonblocking")
+
+        python_file = os.path.join(os.path.dirname(__file__), 'sleepy.py')
+        cmd = ["/usr/bin/python3"]
+        cmd.extend([python_file])
+        cmd.extend(["--verbosity=%s" % self.verbosity])
+        cmd.extend(["--seconds=%s" % self.seconds])
+        cmd.extend(["--sigterm=%s" % self.sigterm])
+        try:
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            while process.poll() is None and controller.running:
+                time.sleep(10)
+
+            if not controller.running and process.poll() is None:
+                loginf("attempting TERM")
+                process.terminate()
+
             time.sleep(10)
+            if not controller.running and process.poll() is None:
+                loginf("attempting KILL")
+                process.kill()
 
-        if shutting_down and process.poll() is None:
-            log.info("attempting TERM")
-            process.terminate()
-        time.sleep(10)
-        if shutting_down and process.poll() is None:
-            log.info("attempting KILL")
-            process.kill()
+            time.sleep(10)
+            if process.poll() is None:
+                loginf("still running")
 
-        if process.poll() is None:
-            log.info("still running")
+            stdout = process.communicate()[0]
+            stroutput = stdout.decode("utf-8").strip()
+            loginf(stroutput)
+        except Exception as exception:
+            logerr(exception)
+            raise
 
-        stdout = process.communicate()[0]
-        stroutput = stdout.decode("utf-8").strip()
-    except Exception as e:
-        logerr(e)
-        raise      
-
-    log.info('awake')
+        loginf('awake')
 
 class TestSignalService(StdService):
     """A service to test handling signals. """
     def __init__(self, engine, config_dict):
-        super(TestSignalService, self).__init__(engine, config_dict)    
+        super(TestSignalService, self).__init__(engine, config_dict)
 
         service_dict = config_dict.get('TestSignal', {})
 
-        self.enable = to_bool(service_dict.get('enable', True))    
+        self.enable = to_bool(service_dict.get('enable', True))
         if not self.enable:
             loginf("Not enabled, exiting.")
-            return            
+            return
 
-        seconds = to_int(service_dict.get('seconds', 10))    
-        sigterm = service_dict.get('sigterm', 'handle')  
+        sleepy = Sleepy(to_int(service_dict.get('verbosity', 0)),
+                        to_int(service_dict.get('seconds', 10)),
+                        service_dict.get('sigterm', 'handle'),
+                        service_dict.get('type', 'blocking'))
 
         self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
-        self._thread = TestSignalServiceThread(seconds, sigterm)
+        self._thread = TestSignalServiceThread(sleepy)
         self._thread.start()
 
     def new_archive_record(self, event):
@@ -136,28 +153,25 @@ class TestSignalService(StdService):
 
     def shutDown(self):
         """Run when an engine shutdown is requested."""
-        global shutting_down
         loginf("SHUTDOWN - initiated")
 
         if self._thread:
             loginf("SHUTDOWN - thread initiated")
             self._thread.running = False
-            shutting_down = True
             self._thread.threading_event.set()
             self._thread.join(20.0)
             if self._thread.is_alive():
                 logerr("Unable to shut down %s thread" %self._thread.name)
 
-            self._thread = None        
+            self._thread = None
 
 class TestSignalServiceThread(threading.Thread):
     """A service to test handling signals."""
-    def __init__(self, seconds, sigterm):
+    def __init__(self, sleepy):
         threading.Thread.__init__(self)
 
-        self.seconds = seconds
-        self.sigterm = sigterm
         self.running = False
+        self.sleepy = sleepy
 
         self.threading_event = threading.Event()
 
@@ -166,7 +180,7 @@ class TestSignalServiceThread(threading.Thread):
 
         while self.running:
             self.threading_event.wait()
-            invoke_sleepy(self.seconds, self.sigterm)
+            self.sleepy.invoke(self)
             self.threading_event.clear()
 
         loginf("exited loop")
@@ -181,12 +195,14 @@ class TestSignalGenerator(ReportGenerator):
             self, config_dict, skin_dict, *args, **kwargs)
 
         extras = skin_dict.get('Extras', {})
-        self.seconds = to_int(extras.get('seconds', 10))    
-        self.sigterm = extras.get('sigterm', 'handle')
+        self.sleepy = Sleepy(to_int(extras.get('verbosity', 0)),
+                             to_int(extras.get('seconds', 10)),
+                             extras.get('sigterm', 'handle'),
+                             extras.get('type', 'blocking'))
 
     def run(self):
         loginf("running")
-        invoke_sleepy(self.seconds, self.sigterm)
+        self.sleepy.invoke(self)
 
     def finalize(self):
         loginf("finalize")
