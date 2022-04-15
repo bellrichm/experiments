@@ -4,6 +4,7 @@ import syslog
 import time
 
 running = True
+verbosity = 0
 
 def log_it(msg):
     #print(msg)
@@ -24,6 +25,9 @@ usage = """sleepy --help
 
 parser = argparse.ArgumentParser(usage=usage)
 
+parser.add_argument('--verbosity', dest='verbosity', type=int,
+                    help='Controls the logging verbosity.',
+                    default=0)
 parser.add_argument('--seconds', dest='seconds', type=int,
                     help='The number of seconds to sleep.',
                     default=10)
@@ -43,6 +47,7 @@ log_it("starting")
 
 while running:
     time.sleep(10)
-    log_it("sleeping")
+    if verbosity > 0:
+        log_it("sleeping")
 
 log_it("done")
