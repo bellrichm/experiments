@@ -15,18 +15,18 @@ class Sleepy(object):
         self.running = False
 
         if sigterm == 'ignore':
-            signal.signal(signal.SIGTERM, self._ignore_sigterm)
+            signal.signal(signal.SIGTERM, self._ignore_signal)
         else:
-            signal.signal(signal.SIGTERM, self._handle_sigterm)
+            signal.signal(signal.SIGTERM, self._handle_signal)
 
     def _log_it(self, msg):
         #print(msg)
         syslog.syslog(syslog.LOG_INFO, msg)
 
-    def _ignore_sigterm(self, signum, _frame):
+    def _ignore_signal(self, signum, _frame):
         self._log_it("Ignoring signal TERM (%s)." %signum)
 
-    def _handle_sigterm(self, signum, _frame):
+    def _handle_signal(self, signum, _frame):
         self._log_it("Handling signal TERM (%s)." %signum)
         self.running = False
 
