@@ -182,9 +182,10 @@ class TestSignalServiceThread(threading.Thread):
     def run(self):
         self.running = True
 
+        self.threading_event.wait() # wait for first event before enterin loop
         while self.running:
-            self.threading_event.wait()
             self.sleepy.invoke(self)
+            self.threading_event.wait()
             self.threading_event.clear()
 
         loginf("exited loop")

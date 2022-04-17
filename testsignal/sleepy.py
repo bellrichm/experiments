@@ -15,11 +15,15 @@ class Sleepy(object):
 
         if sigterm == 'ignore':
             signal.signal(signal.SIGTERM, self._ignore_signal)
+        elif sigterm == 'default':
+            signal.signal(signal.SIGTERM, signal.SIG_DFL)
         else:
             signal.signal(signal.SIGTERM, self._handle_signal)
 
         if sigint == 'ignore':
             signal.signal(signal.SIGINT, self._ignore_signal)
+        elif sigint == 'default':
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
         else:
             signal.signal(signal.SIGINT, self._handle_signal)
 
@@ -38,10 +42,12 @@ class Sleepy(object):
         self._log_it("starting")
 
         self.running = True
+        i = 0
         while self.running:
+            i += 1
             time.sleep(self.seconds)
             if self.verbosity > 0:
-                self._log_it("sleeping")
+                self._log_it("sleeping %i" % i)
 
         self._log_it("done")
 
