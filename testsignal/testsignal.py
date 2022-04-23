@@ -171,6 +171,8 @@ class TestSignalService(StdService):
             self._thread.join(20.0)
             if self._thread.is_alive():
                 logerr("Unable to shut down %s thread" %self._thread.name)
+            else:
+                loginf("SHUTDOWN - thread completed")
 
             self._thread = None
 
