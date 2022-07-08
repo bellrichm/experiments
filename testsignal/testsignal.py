@@ -134,18 +134,18 @@ class TestSignalService(StdService):
     def __init__(self, engine, config_dict):
         super(TestSignalService, self).__init__(engine, config_dict)
 
-        service_dict = config_dict.get('TestSignal', {})
+        self.service_dict = config_dict.get('TestSignal', {})
 
-        self.enable = to_bool(service_dict.get('enable', True))
+        self.enable = to_bool(self.service_dict.get('enable', True))
         if not self.enable:
             loginf("Not enabled, exiting.")
             return
 
-        sleepy = Sleepy(to_int(service_dict.get('verbosity', 0)),
-                        to_int(service_dict.get('seconds', 10)),
-                        service_dict.get('sigterm', 'handle'),
-                        service_dict.get('sigint', 'handle'),
-                        service_dict.get('type', 'blocking'))
+        sleepy = Sleepy(to_int(self.service_dict.get('verbosity', 0)),
+                        to_int(self.service_dict.get('seconds', 10)),
+                        self.service_dict.get('sigterm', 'handle'),
+                        self.service_dict.get('sigint', 'handle'),
+                        self.service_dict.get('type', 'blocking'))
 
         self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
         self._thread = TestSignalServiceThread(sleepy)
@@ -161,6 +161,13 @@ class TestSignalService(StdService):
 
         if self._thread:
             loginf("SHUTDOWN - thread initiated")
+
+            if 'start_on_term' in self.service_dict:
+                sleepy = Sleepy(0, 10, 'ignore', 'ignore', 'blocking')
+                _thread2 = TestSignalServiceThread(sleepy)
+                _thread2.start()
+                _thread2.threading_event.set()
+
             self._thread.running = False
             self._thread.threading_event.set()
             self._thread.join(20.0)
