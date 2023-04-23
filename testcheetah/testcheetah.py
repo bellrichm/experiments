@@ -10,13 +10,15 @@ if __name__=="__main__":
         tmpname = genname + '.tmp'
 
         #print("  compiling")
-        compiled_template = Cheetah.Template.Template(
-            file=filename,
-        )
+        #template_instance = Cheetah.Template.Template(file=filename)
 
-        #print("  respond")
+        template_class = Cheetah.Template.Template.compile(file=filename)
+        template_instance = template_class(searchList=None)
+
+        print("  respond")
         # only needed when including large file
-        #unicode_string = compiled_template.respond()
+        unicode_string = template_instance.respond()
+        print("   end")
 
     def touch_file(filename):
         os.system("touch %s" % filename)
