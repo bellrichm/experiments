@@ -64,11 +64,11 @@ class Sleepy(object):
 
     def invoke(self, controller):
         if self.invocation_type == "blocking":
-            self._invoke_blocking()
+            self._invoke_blocking(controller)
         else:
             self._invoke_nonblocking(controller)
 
-    def _invoke_blocking(self):
+    def _invoke_blocking(self, controller):
         loginf("sleeping blocking")
 
         python_file = os.path.join(os.path.dirname(__file__), 'sleepy.py')
@@ -88,7 +88,12 @@ class Sleepy(object):
             logerr(exception)
             raise
 
+        # A negative value -N indicates that the child was terminated by signal N (POSIX only).
+        if sleepy_cmd.returncode < 0:
+            controller.running = False
+
         loginf(stroutput)
+        loginf(sleepy_cmd.returncode)
 
         loginf('awake')
 
@@ -173,6 +178,8 @@ class TestSignalService(StdService):
             self._thread.join(20.0)
             if self._thread.is_alive():
                 logerr("Unable to shut down %s thread" %self._thread.name)
+            else:
+                loginf("SHUTDOWN - thread completed")
 
             self._thread = None
 
