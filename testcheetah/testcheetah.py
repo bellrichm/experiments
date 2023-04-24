@@ -39,8 +39,7 @@ if __name__=="__main__":
         unicode_string = template_instance.respond()
         template_instance.shutdown()
         #del template_instance
-        gc.collect()
-        print(sys.modules)
+        #gc.collect()
         #del template_instance
         #print(unicode_string)
 
