@@ -1,4 +1,5 @@
 import json
+import sys
 import urllib.request
 
 def test_get():
@@ -31,10 +32,12 @@ def test_post():
     except urllib.error.HTTPError as http_error:
         print(http_error)
         raw_data = http_error.read()
+        #raw_data = http_error.fp.read()
         print(raw_data)
         error_msg = raw_data.decode()
         print(error_msg)
 
 if __name__=="__main__":
+    print(f"Using Python {sys.version}")
     #test_get()
     test_post()
