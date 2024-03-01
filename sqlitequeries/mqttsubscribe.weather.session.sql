@@ -1,0 +1,3 @@
+SELECT RADIANS(0.0),
+    SIN(0.0),
+    COS(0.0);
