@@ -10,6 +10,7 @@ import os
 import resource
 import sys
 import time
+import tracemalloc
 
 import Cheetah.Template
 
@@ -36,7 +37,17 @@ if __name__=="__main__":
         template_instance = template_class()
 
         # print("  respond")
+        #tracemalloc.start()
+        print(sys.getsizeof(sys.modules))
         unicode_string = template_instance.respond()
+        print(sys.getsizeof(sys.modules))
+        #snapshot = tracemalloc.take_snapshot()
+        #top_stats = snapshot.statistics('lineno')
+
+        #print("[ Top 10 ]")
+        #for stat in top_stats[:10]:
+        #    print(stat)
+
         template_instance.shutdown()
         #del template_instance
         #gc.collect()
