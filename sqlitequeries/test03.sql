@@ -15,5 +15,5 @@ FROM (
         GROUP BY (dateTime - 300) / 3600
             /* need to subtract the archive interval to get the correct begin and end range */
             /*HAVING avgConcentration IS NOT NULL*/
-        ORDER BY dateTime ASC
+        /*ORDER BY dateTime ASC*/
     ) AS rowcount
