@@ -1,4 +1,5 @@
-Select COUNT()
+/* count of non null concentrations */
+Select COUNT(rowcount.avgConcentration), rowcount.*
 FROM (
         SELECT
             /*dateTime,
@@ -6,7 +7,7 @@ FROM (
             count(pm2_5) as countConcentration,
             min(dateTime),
             max(dateTime),
-            IFNULL(avg(pm2_5), 0) as avgConcentration
+            avg(batteryStatus1) as avgConcentration
         FROM archive
         WHERE dateTime >= (unixepoch() / 3600) * 3600 - 39600 + 300
             /* 300 is the archive interval */
@@ -15,4 +16,4 @@ FROM (
             /* need to subtract the archive interval to get the correct begin and end range */
             /*HAVING avgConcentration IS NOT NULL*/
         ORDER BY dateTime ASC
-    ) AS ROWCOUNT
+    ) AS rowcount
