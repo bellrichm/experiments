@@ -1,4 +1,5 @@
 SELECT dateTime,
+    dateTime/3600,
     datetime(dateTime, 'unixepoch', 'localtime') as DT,
     pm2_5
 FROM archive
