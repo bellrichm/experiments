@@ -44,6 +44,9 @@ if __name__ == "__main__":
         for i in range(max_threads):
             data_queue.put(None)
 
+        for i in range(max_threads):
+            threads[i].join()
+
         print("The end.")
 
     main()
