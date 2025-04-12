@@ -10,7 +10,7 @@ import logging
 import weewx
 import weewx.engine
 
-from weeutil import to_bool
+from weeutil.weeutil import to_bool
 
 VERSION = '0.0.1'
 
@@ -26,10 +26,10 @@ def loginf(msg):
 def logerr(msg):
     """ Log error level. """
     log.error(msg)
-class ObservationTime(weewx.engine.StdService):
+class EventHandlers(weewx.engine.StdService):
     ''' Save the times and values of the first, last, min, and max of an observation.'''
     def __init__(self, engine, config_dict):
-        super(ObservationTime, self).__init__(engine, config_dict)
+        super(EventHandlers, self).__init__(engine, config_dict)
 
         service_dict = config_dict.get('AdditionalObservations', {})
 
@@ -44,6 +44,7 @@ class ObservationTime(weewx.engine.StdService):
         self.bind(weewx.CHECK_LOOP, self.check_loop)
         self.bind(weewx.END_ARCHIVE_PERIOD, self.end_archive_period)
         self.bind(weewx.NEW_ARCHIVE_RECORD, self.new_archive_record)
+        #self.bind(weewx.POST_RECORD_AUGMENTATION, self.post_record_augmentation)
         self.bind(weewx.POST_LOOP, self.post_loop)
 
     def shutDown(self):
@@ -73,6 +74,10 @@ class ObservationTime(weewx.engine.StdService):
     def new_archive_record(self, _event):
         '''Handle the WeeWX NEW_ARCHIVE_RECORD event. '''
         loginf("Handling NEW_ARCHIVE_RECORD event.")
+
+    def post_record_augmentation(self, event):
+        '''Handle the WeeWX POST_RECORD_AUGMENTATION event. '''
+        loginf("Handling POST_RECORD_AUGMENTATION event.")
 
     def post_loop(self, _event):
         ''' Handle the WeeWX POST_LOOP event.'''
