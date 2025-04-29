@@ -31,7 +31,7 @@ class EventHandlers(weewx.engine.StdService):
     def __init__(self, engine, config_dict):
         super(EventHandlers, self).__init__(engine, config_dict)
 
-        service_dict = config_dict.get('AdditionalObservations', {})
+        service_dict = config_dict.get('EventHandlers', {})
 
         enable = to_bool(service_dict.get('enable', True))
         if not enable:
