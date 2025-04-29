@@ -33,7 +33,7 @@ class EventHandlers(weewx.engine.StdService):
 
         service_dict = config_dict.get('EventHandlers', {})
 
-        enable = to_bool(service_dict.get('enable', True))
+        enable = to_bool(service_dict.get('enable', False))
         if not enable:
             loginf("Not enabled, exiting.")
             return
